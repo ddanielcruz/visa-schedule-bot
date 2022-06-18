@@ -4,7 +4,7 @@ import StealthPlugin from 'puppeteer-extra-plugin-stealth'
 import chalk from 'chalk'
 import lodash from 'lodash'
 
-const { CONSULATE, EMAIL, PASSWORD, SCHEDULE_ID, HEADLESS } = process.env
+const { CONSULATE, EMAIL, PASSWORD, SCHEDULE_ID, HEADLESS, INTERVAL } = process.env
 
 const baseUrl = 'https://ais.usvisa-info.com/pt-br/niv'
 const signInUrl = `${baseUrl}/users/sign_in`
@@ -12,7 +12,7 @@ const scheduleUrl = `${baseUrl}/schedule/${SCHEDULE_ID}/appointment/days/${CONSU
 
 puppeteer.use(StealthPlugin())
 
-async function program() {
+async function extractDates() {
   // Launch browser and navigate to VISA page
   console.log(chalk.green(`Launching browser and navigating to VISA page`))
   const browser = await puppeteer.launch({ headless: HEADLESS === 'true' })
@@ -42,4 +42,11 @@ async function program() {
   await browser.close()
 }
 
-program()
+// TODO: Send notification by Slack
+console.log(chalk.magenta(`Scheduling bot to run every ${INTERVAL} seconds`))
+const interval = parseInt(INTERVAL) * 1000
+setInterval(async () => {
+  console.log('\n')
+  await extractDates()
+}, interval)
+extractDates()

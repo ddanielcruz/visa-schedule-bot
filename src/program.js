@@ -37,7 +37,6 @@ async function extractDates() {
   for (const availableDate of availableDates.slice(0, 5)) {
     console.log(chalk.yellow(availableDate.date))
   }
-
   // Close operation
   await browser.close()
 }
@@ -46,7 +45,7 @@ async function extractDates() {
 console.log(chalk.magenta(`Scheduling bot to run every ${INTERVAL} seconds`))
 const interval = parseInt(INTERVAL) * 1000
 setInterval(async () => {
-  console.log('\n')
+  console.log()
   await extractDates()
 }, interval)
 extractDates()

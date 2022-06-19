@@ -4,48 +4,71 @@ import StealthPlugin from 'puppeteer-extra-plugin-stealth'
 import chalk from 'chalk'
 import lodash from 'lodash'
 
+import { logger } from './logger.js'
+
 const { CONSULATE, EMAIL, PASSWORD, SCHEDULE_ID, HEADLESS, INTERVAL } = process.env
 
 const baseUrl = 'https://ais.usvisa-info.com/pt-br/niv'
 const signInUrl = `${baseUrl}/users/sign_in`
 const scheduleUrl = `${baseUrl}/schedule/${SCHEDULE_ID}/appointment/days/${CONSULATE}.json?appointments%5Bexpedite%5D=false`
-
+const maximumDate = new Date(2022, 7, 31)
 puppeteer.use(StealthPlugin())
+
+async function retrieveConsulateDates(page, retry = true) {
+  const response = await page.goto(scheduleUrl)
+  const availableDates = await response.json()
+
+  if (!availableDates) {
+    if (retry) {
+      return await retrieveConsulateDates(page, false)
+    }
+
+    throw new Error('Failed to retrieve consulate dates!')
+  }
+
+  return availableDates
+}
 
 async function extractDates() {
   // Launch browser and navigate to VISA page
-  console.log(chalk.green(`Launching browser and navigating to VISA page`))
+  logger.debug('Launching browser and navigating to schedule interview page')
   const browser = await puppeteer.launch({ headless: HEADLESS === 'true' })
-  const [page] = await browser.pages()
-  await page.goto(signInUrl)
 
-  // Populate user credentials and sign in
-  console.log('Signing in to user profile')
-  await page.waitForSelector('#user_email')
-  await page.type('#user_email', EMAIL)
-  await page.type('#user_password', PASSWORD)
-  await page.click('#policy_confirmed')
-  await page.click('.new_user input.button')
+  try {
+    const [page] = await browser.pages()
+    await page.goto(signInUrl)
 
-  // Request schedule available dates and log the five closest ones
-  console.log(`Requesting available dates from consulate ${chalk.green(CONSULATE)}`)
-  const response = await page.goto(scheduleUrl)
-  let availableDates = await response.json()
-  availableDates = lodash.sortBy(availableDates, 'date')
+    // Populate user credentials and sign in
+    logger.debug('Signing in to user profile')
+    await page.waitForSelector('#user_email')
+    await page.type('#user_email', EMAIL)
+    await page.type('#user_password', PASSWORD)
+    await page.click('#policy_confirmed')
+    await page.click('.new_user input.button')
 
-  console.log(chalk.green('\nClosest dates in the selected consulate:'))
-  for (const availableDate of availableDates.slice(0, 5)) {
-    console.log(chalk.yellow(availableDate.date))
+    // Request schedule available dates and log the five closest ones
+    logger.debug(`Requesting available dates from consulate ${chalk.green(CONSULATE)}`)
+    await page.waitForSelector('.attend_appointment')
+    let availableDates = await retrieveConsulateDates(page)
+    availableDates = lodash.sortBy(availableDates, 'date')
+
+    const closestDates = availableDates
+      .slice(0, 5)
+      .map(({ date }) => date)
+      .join(', ')
+    logger.info(`Closest dates in the selected consulate: ${chalk.green(closestDates)}`)
+  } catch (error) {
+    logger.error(error.message)
+  } finally {
+    await browser.close()
   }
-  // Close operation
-  await browser.close()
 }
 
-// TODO: Send notification by Slack
-console.log(chalk.magenta(`Scheduling bot to run every ${INTERVAL} seconds`))
+logger.warn(`Scheduling bot to run every ${INTERVAL} seconds.`)
+logger.warn(`Maximum date is set to ${maximumDate.toDateString()}`)
+
 const interval = parseInt(INTERVAL) * 1000
 setInterval(async () => {
-  console.log()
   await extractDates()
 }, interval)
 extractDates()

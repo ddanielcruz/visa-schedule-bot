@@ -15,6 +15,7 @@
     "lodash": "^4.17.21",
     "puppeteer": "^14.4.1",
     "puppeteer-extra": "^3.2.3",
-    "puppeteer-extra-plugin-stealth": "^2.9.0"
+    "puppeteer-extra-plugin-stealth": "^2.9.0",
+    "winston": "^3.7.2"
   }
 }

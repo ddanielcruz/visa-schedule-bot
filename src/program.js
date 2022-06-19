@@ -3,6 +3,8 @@ import puppeteer from 'puppeteer-extra'
 import StealthPlugin from 'puppeteer-extra-plugin-stealth'
 import chalk from 'chalk'
 import lodash from 'lodash'
+import notifier from 'node-notifier'
+import open from 'open'
 
 import { logger } from './logger.js'
 
@@ -29,9 +31,23 @@ async function retrieveConsulateDates(page, retry = true) {
   return availableDates
 }
 
+async function notifyClosestDates(dates) {
+  const firstDate = new Date(dates[0])
+  if (firstDate <= maximumDate) {
+    notifier.notify({
+      title: 'Found dates before the maximum!',
+      message: dates.map(({ date }) => date).join(', '),
+      sound: true,
+      actions: 'Open website',
+      time: 5
+    })
+    await open(baseUrl)
+  }
+}
+
 async function extractDates() {
   // Launch browser and navigate to VISA page
-  logger.debug('Launching browser and navigating to schedule interview page')
+  logger.debug('Navigating to schedule application')
   const browser = await puppeteer.launch({ headless: HEADLESS === 'true' })
 
   try {
@@ -52,11 +68,13 @@ async function extractDates() {
     let availableDates = await retrieveConsulateDates(page)
     availableDates = lodash.sortBy(availableDates, 'date')
 
-    const closestDates = availableDates
-      .slice(0, 5)
-      .map(({ date }) => date)
-      .join(', ')
-    logger.info(`Closest dates in the selected consulate: ${chalk.green(closestDates)}`)
+    logger.info(`Closest dates in the selected consulate:`)
+    const closestDates = availableDates.slice(0, 5)
+    closestDates.forEach(({ date }) => logger.info(date))
+
+    if (closestDates.length) {
+      notifyClosestDates(closestDates)
+    }
   } catch (error) {
     logger.error(error.message)
   } finally {

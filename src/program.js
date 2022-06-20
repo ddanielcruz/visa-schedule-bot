@@ -68,12 +68,13 @@ async function extractDates() {
     let availableDates = await retrieveConsulateDates(page)
     availableDates = lodash.sortBy(availableDates, 'date')
 
-    logger.info(`Closest dates in the selected consulate:`)
-    const closestDates = availableDates.slice(0, 5)
-    closestDates.forEach(({ date }) => logger.info(date))
-
-    if (closestDates.length) {
+    if (availableDates.length) {
+      logger.info(`Closest dates in the selected consulate:`)
+      const closestDates = availableDates.slice(0, 5)
+      closestDates.forEach(({ date }) => logger.info(date))
       notifyClosestDates(closestDates)
+    } else {
+      logger.error("The consulate doesn't have any available date!")
     }
   } catch (error) {
     logger.error(error.message)

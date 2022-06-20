@@ -32,7 +32,7 @@ async function retrieveConsulateDates(page, retry = true) {
 }
 
 async function notifyClosestDates(dates) {
-  const firstDate = new Date(dates[0])
+  const firstDate = new Date(dates[0].date)
   if (firstDate <= maximumDate) {
     notifier.notify({
       title: 'Found dates before the maximum!',

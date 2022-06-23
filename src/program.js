@@ -43,7 +43,7 @@ async function notifyClosestDates(dates) {
       actions: 'Open website',
       time: 5
     })
-    await open(baseUrl)
+    await open(signInUrl)
   }
 }
 
